@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Atelier PDF</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- pdf.js : affiche les pages en miniatures -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- pdf-lib : assemble et modifie les PDF -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+  <header class="entete">
+    <h1>Atelier PDF</h1>
+    <p class="sous-titre">Fusionner, réorganiser, pivoter, supprimer et extraire des pages.
+      Vos fichiers restent sur votre ordinateur : rien n'est envoyé sur Internet.</p>
+  </header>
+
+  <main>
+    <!-- Zone pour ajouter des PDF (clic ou glisser-déposer) -->
+    <label id="zoneDepot" class="zone-depot">
+      <input id="champFichiers" type="file" accept="application/pdf,.pdf" multiple hidden>
+      <strong>Glissez vos PDF ici</strong>
+      <span>ou cliquez pour les choisir (plusieurs à la fois possible)</span>
+    </label>
+
+    <!-- Liste des fichiers chargés (avec leur couleur) -->
+    <ul id="listeFichiers" class="liste-fichiers"></ul>
+
+    <!-- Barre d'actions -->
+    <section id="barreActions" class="barre-actions" hidden>
+      <div class="groupe">
+        <span id="compteurPages" class="compteur"></span>
+        <button id="btnToutSelectionner" type="button">Tout sélectionner</button>
+        <button id="btnToutDeselectionner" type="button">Tout désélectionner</button>
+        <button id="btnPivoterSelection" type="button">↻ Pivoter la sélection</button>
+        <button id="btnSupprimerSelection" type="button" class="danger">Supprimer la sélection</button>
+        <button id="btnToutEffacer" type="button" class="danger">Tout effacer</button>
+      </div>
+      <div class="groupe">
+        <label class="champ-nom">Nom du fichier :
+          <input id="champNom" type="text" value="document-fusionne">
+          <span>.pdf</span>
+        </label>
+        <button id="btnExtraire" type="button">Extraire la sélection</button>
+        <button id="btnTelecharger" type="button" class="principal">Télécharger le PDF</button>
+      </div>
+    </section>
+
+    <p id="message" class="message" role="status" aria-live="polite"></p>
+
+    <p id="aide" class="aide" hidden>Astuce : faites glisser une page pour la déplacer.
+      Cliquez sur une miniature pour la sélectionner, double-cliquez (ou ✎) pour y ajouter
+      du texte, un rectangle, une image ou une signature.</p>
+
+    <!-- Grille des miniatures de pages -->
+    <section id="grillePages" class="grille-pages"></section>
+  </main>
+
+  <!-- ===== Éditeur d'une page (plein écran) ===== -->
+  <div id="editeur" class="editeur" hidden>
+    <aside class="panneau">
+      <h2>Modifier la page <span id="editeurNumero"></span></h2>
+
+      <div class="outils-ajout">
+        <button id="btnAjoutTexte" type="button"><b>T</b> Texte</button>
+        <button id="btnAjoutRectangle" type="button">▭ Rectangle</button>
+        <button id="btnAjoutImage" type="button">🖼 Image</button>
+        <button id="btnAjoutSignature" type="button">✍ Signature</button>
+        <input id="champImage" type="file" accept="image/*" hidden>
+      </div>
+      <p class="aide">Faites glisser un élément pour le déplacer, et le coin en bas à droite
+        pour le redimensionner. Touche Suppr pour l'effacer.</p>
+
+      <!-- Réglages de l'élément sélectionné -->
+      <section id="proprietes" class="proprietes" hidden>
+        <h3 id="proprietesTitre"></h3>
+        <div id="propsTexte" class="champs">
+          <label>Texte <textarea id="propTexte" rows="3"></textarea></label>
+          <label class="ligne">Taille <input id="propTaille" type="number" min="4" max="300"> pt</label>
+          <label class="ligne"><input id="propGras" type="checkbox"> Gras</label>
+          <p class="aide">Accents et € acceptés ; les emojis et symboles rares
+            (✓, ★…) deviendront « ? » dans le PDF.</p>
+        </div>
+        <label id="propsCouleur" class="ligne">Couleur <input id="propCouleur" type="color"></label>
+        <p id="infoRectangle" class="aide">Rectangle blanc : pratique pour masquer une zone
+          (pensez à vérifier le résultat : le texte caché reste présent dans le fichier).</p>
+        <button id="btnSupprimerAjout" type="button" class="danger">Supprimer l'élément</button>
+      </section>
+
+      <div class="actions-editeur">
+        <button id="btnAnnulerEdition" type="button">Annuler</button>
+        <button id="btnValiderEdition" type="button" class="principal">Valider</button>
+      </div>
+    </aside>
+
+    <div id="zoneFeuille" class="zone-feuille">
+      <div id="feuille" class="feuille">
+        <canvas id="canvasFeuille"></canvas>
+        <div id="calque" class="calque"></div>
+      </div>
+    </div>
+
+    <!-- Fenêtre pour dessiner une signature -->
+    <div id="fenetreSignature" class="fenetre-signature" hidden>
+      <div class="boite-signature">
+        <h3>Signez dans le cadre avec la souris</h3>
+        <canvas id="padSignature" class="pad-signature"></canvas>
+        <div class="ligne-boutons">
+          <label class="ligne"><input type="radio" name="couleurSignature" value="#000000" checked> Noir</label>
+          <label class="ligne"><input type="radio" name="couleurSignature" value="#1e3a8a"> Bleu</label>
+          <span class="espace"></span>
+          <button id="btnEffacerSignature" type="button">Effacer</button>
+          <button id="btnAnnulerSignature" type="button">Annuler</button>
+          <button id="btnInsererSignature" type="button" class="principal">Insérer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="editeur.js"></script>
+</body>
+</html>
